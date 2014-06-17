@@ -2,6 +2,7 @@
 #include "vmrisimulator.h"
 #include <stdio.h>
 #include "qjson.h"
+#include "textfile.h"
 
 void usage() {
 	printf("usage: vmriengine [isochromats.json] [simblocks.json] [output.raw]\n");
