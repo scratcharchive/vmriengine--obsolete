@@ -2,6 +2,8 @@
 #include "vmrigpuinterface.h"
 #include <stdio.h>
 #include <math.h>
+#include <QDebug>
+#include <ctime>
 
 #define PI 3.141592653589793
 
@@ -51,6 +53,7 @@ QList<double> to_double_list(const QList<QVariant> &L) {
 }
 
 void VmriSimulator::simulate() {
+	qDebug()  << "Simulating";
 	
 	d->m_gpu_interface.setT1(d->m_T1);
 	d->m_gpu_interface.setT2(d->m_T2);
@@ -65,6 +68,7 @@ void VmriSimulator::simulate() {
 	QList<QVariant> rf_waveforms=d->m_simblocks["rf_waveforms"].toList();
 	QList<QVariant> blocks=d->m_simblocks["blocks"].toList();
 	
+	qDebug()  << "Adding RF waveforms...";
 	for (int i=0; i<rf_waveforms.count(); i++) {
 		QMap<QString,QVariant> WW=rf_waveforms[i].toMap();
 		QList<double> data_real=to_double_list(WW["data_real"].toList());
@@ -75,15 +79,25 @@ void VmriSimulator::simulate() {
 	
 	d->m_gpu_interface.initialize();
 	
+	qDebug()  << "Executing blocks...";
+	
+	std::clock_t start;
+	start=std::clock();
+	
 	for (int i=0; i<blocks.count(); i++) {
 		QMap<QString,QVariant> BB=blocks[i].toMap();
 		QString block_type=BB["block_type"].toString();
+		double duration=BB["duration"].toDouble();
 		if (block_type=="evolve") {
+		    printf("Evolve (%g ms)...",duration);
+		    start=std::clock();
 			QList<double> gradient_moment=to_double_list(BB["gradient_moment"].toList());
-			double duration=BB["duration"].toDouble();
 			d->do_evolve(gradient_moment,duration);
+			printf("(elapsed=%g). ", (std::clock() - start ) / (double) CLOCKS_PER_SEC*1000);
 		}
 		else if (block_type=="rf_pulse") {
+		    printf("RF (%g ms)...",duration);
+		    start=std::clock();
 			QList<double> gradient_amplitude=to_double_list(BB["gradient_amplitude"].toList());
 			double A[3];
 			double factor=42.57; //uT/mm * Hz/uT = Hz/mm
@@ -95,8 +109,11 @@ void VmriSimulator::simulate() {
 			double phase=BB["phase"].toDouble();
 			double frequency=BB["frequency"].toDouble();
 			d->m_gpu_interface.excite(rf_waveform_index,A,dt,phase,frequency);
+			printf("(elapsed=%g). ", (std::clock() - start ) / (double) CLOCKS_PER_SEC*1000);
 		}
 		else if (block_type=="readout") {
+		    printf("Readout (%g ms).\n",duration);
+		    start=std::clock();
 			double T1=d->m_T1;
 			double T2=d->m_T2;
 			
@@ -153,7 +170,7 @@ void VmriSimulator::simulate() {
 			readout.dwell_time=dt;
 			
 			d->m_readouts << readout;
-			
+			printf("(elapsed=%g). ", (std::clock() - start ) / (double) CLOCKS_PER_SEC*1000);
 		}
 	}
 }
