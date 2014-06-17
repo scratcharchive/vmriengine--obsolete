@@ -1,5 +1,5 @@
 #include "vmrisimulator.h"
-#include "vmrigpuinterface.h"
+#include "vmriinterface.h"
 #include <stdio.h>
 #include <math.h>
 #include <QDebug>
@@ -10,7 +10,7 @@
 
 class VmriSimulatorPrivate {
 public:
-	VmriGpuInterface m_gpu_interface;
+	VmriInterface m_interface;
 	QMap<QString,QVariant> m_isochromats;
 	QMap<QString,QVariant> m_simblocks;
 	double m_T1,m_T2;
@@ -55,15 +55,15 @@ QList<double> to_double_list(const QList<QVariant> &L) {
 void VmriSimulator::simulate() {
 	qDebug()  << "Simulating";
 	
-	d->m_gpu_interface.setT1(d->m_T1);
-	d->m_gpu_interface.setT2(d->m_T2);
+	d->m_interface.setT1(d->m_T1);
+	d->m_interface.setT2(d->m_T2);
 	
 	QList<double> xx=to_double_list(d->m_isochromats.value("x").toList());
 	QList<double> yy=to_double_list(d->m_isochromats.value("y").toList());
 	QList<double> zz=to_double_list(d->m_isochromats.value("z").toList());
 	QList<double> ff=to_double_list(d->m_isochromats.value("f").toList());
 	QList<double> dd=to_double_list(d->m_isochromats.value("d").toList());
-	d->m_gpu_interface.setIsochromats(xx,yy,zz,ff,dd);
+	d->m_interface.setIsochromats(xx,yy,zz,ff,dd);
 	
 	QList<QVariant> rf_waveforms=d->m_simblocks["rf_waveforms"].toList();
 	QList<QVariant> blocks=d->m_simblocks["blocks"].toList();
@@ -74,10 +74,10 @@ void VmriSimulator::simulate() {
 		QList<double> data_real=to_double_list(WW["data_real"].toList());
 		QList<double> data_imag=to_double_list(WW["data_imag"].toList());
 		double dt=WW["dt"].toDouble();
-		d->m_gpu_interface.addRFWaveform(data_real,data_imag,dt);
+		d->m_interface.addRFWaveform(data_real,data_imag,dt);
 	}
 	
-	d->m_gpu_interface.initialize();
+	d->m_interface.initialize();
 	
 	qDebug()  << "Executing blocks...";
 	
@@ -108,7 +108,7 @@ void VmriSimulator::simulate() {
 			double dt=BB["dt"].toDouble();
 			double phase=BB["phase"].toDouble();
 			double frequency=BB["frequency"].toDouble();
-			d->m_gpu_interface.excite(rf_waveform_index,A,dt,phase,frequency);
+			d->m_interface.excite(rf_waveform_index,A,dt,phase,frequency);
 			printf("(elapsed=%g). ", (std::clock() - start ) / (double) CLOCKS_PER_SEC*1000);
 		}
 		else if (block_type=="readout") {
@@ -135,7 +135,7 @@ void VmriSimulator::simulate() {
 			double *data_real=(double *)malloc(N*sizeof(double));
 			double *data_imag=(double *)malloc(N*sizeof(double));
 			
-			d->m_gpu_interface.readout(data_real,data_imag,N,A,dt,frequency);
+			d->m_interface.readout(data_real,data_imag,N,A,dt,frequency);
 			for (int i=0; i<N; i++) {
 				output_real << data_real[i];
 				output_imag << data_imag[i];
@@ -183,7 +183,7 @@ void VmriSimulatorPrivate::do_evolve(const QList<double> &moment,double duration
 	A[2]=moment.value(2)*factor;
 	double E1=exp(-duration/m_T1);
 	double E2=exp(-duration/m_T2);
-	m_gpu_interface.evolve(A,duration,E1,E2);
+	m_interface.evolve(A,duration,E1,E2);
 }
 
 QList<VmriReadout> VmriSimulator::getReadouts() {
