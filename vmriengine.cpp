@@ -3,29 +3,61 @@
 #include <stdio.h>
 #include "qjson.h"
 #include "textfile.h"
+#include <QMap>
+#include <QStringList>
+#include "phantom1.h"
+#include <QDebug>
 
 void usage() {
-	printf("usage: vmriengine [isochromats.json] [simblocks.json] [output.raw]\n");
+	printf("usage: vmriengine --phantom=[phantom1|other] --simblocks=[simblocks.json] --output=[output.raw] --num_iso=[10000]\n");
 }
 
 int main(int argc,char **argv) {
 	
-	if (argc-1<3) {
-		usage();
-		return -1;
+	QMap<QString,QString> parameters;
+	
+	for (int i=1; i<argc; i++) {
+		QString str=argv[i];
+		QStringList vals=str.split("=");
+		if (vals.count()==2) {
+			if (vals[0].mid(0,2)=="--") {
+				parameters[vals[0].mid(2)]=vals[1];
+			}
+		}
 	}
 	
-	QString isochromats_file=QString(argv[1]);
-	QString simblocks_file=QString(argv[2]);
-	QString output_file=QString(argv[3]);
+	QString phantom_name=parameters["phantom"];
+	QString simblocks_file=parameters["simblocks"];
+	QString output_file=parameters["output"];
+	int num_isochromats=parameters.value("num_iso","10000").toInt();
 	
-	QMap<QString,QVariant> isochromats0=parseJSON(read_text_file(isochromats_file)).toMap();
+	
+	if ((phantom_name.isEmpty())||(simblocks_file.isEmpty())||(output_file.isEmpty())) {
+		usage();
+		return 1;
+	}
+	
+	if (phantom_name!="phantom1") {
+		qWarning() << "Unrecognized phantom: "+phantom_name;
+		usage();
+		return 1;
+	}
+	
+	Phantom1 PP;
+	QList<double> x,y,z,f,d;
+	PP.generateRandomLocations(x,y,z,num_isochromats);
+	for (int i=0; i<num_isochromats; i++) {
+		SpinProperties SP=PP.spinPropertiesAt(x[i],y[i],z[i]);
+		f << SP.chemical_shift*42.57*1.5;
+		d << SP.density;
+	}
+	
 	QMap<QString,QVariant> simblocks0=parseJSON(read_text_file(simblocks_file)).toMap();
 	
 	VmriSimulator VS;
-	VS.setT1(isochromats0["T1"].toDouble());
-	VS.setT2(isochromats0["T2"].toDouble());
-	VS.setIsochromats(isochromats0);
+	VS.setT1(PP.T1());
+	VS.setT2(PP.T2());
+	VS.setIsochromats(x,y,z,f,d);
 	VS.setSimBlocks(simblocks0);
 	VS.simulate();
 	
@@ -53,6 +85,8 @@ int main(int argc,char **argv) {
 		}
 	}
 	fclose(outf);
+	
+	printf("\n");
 	
 	return 0;
 	

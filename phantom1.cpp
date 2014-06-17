@@ -33,5 +33,5 @@ double Phantom1::T1() const {
 	return 100;
 }
 double Phantom1::T2() const {
-	return 5;
+	return 40;
 }

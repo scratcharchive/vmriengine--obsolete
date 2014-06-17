@@ -83,7 +83,7 @@ void VmriInterface::addRFWaveform(const QList<double> &data_real,const QList<dou
 void VmriInterface::initialize() {
 }
 
-void VmriInterface::evolve(double A[3],double t,double E1,double E2) {
+void VmriInterface::evolve(double A[3],double t,double E1,double E2) {;
 	for (int i=0; i<d->m_isochromats.count(); i++) {
 		Isochromat *II=&d->m_isochromats[i];
 		double pos0[3];
@@ -144,7 +144,6 @@ void VmriInterface::excite(int rf_waveform_index,double A[3],double dt,double ph
 	}
 }
 void VmriInterface::readout(double *output_real,double *output_imag,int N,double A[3],double dt,double frequency) {
-	
 	//we are going to accumulate the spins in the Fourier domain
 	//this has a couple advantages... first it may be faster, second we can filter out the high freqs
 	

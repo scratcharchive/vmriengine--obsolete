@@ -36,8 +36,8 @@ void VmriSimulator::setT2(double T2) {
 	d->m_T2=T2;
 }
 
-void VmriSimulator::setIsochromats(const QMap<QString,QVariant> &isochromats) {
-	d->m_isochromats=isochromats;
+void VmriSimulator::setIsochromats(const QList<double> &x,const QList<double> &y,const QList<double> &z,const QList<double> &f,const QList<double> &dd) {
+	d->m_interface.setIsochromats(x,y,z,f,dd);
 }
 
 void VmriSimulator::setSimBlocks(const QMap<QString,QVariant> &simblocks) {
@@ -57,13 +57,6 @@ void VmriSimulator::simulate() {
 	
 	d->m_interface.setT1(d->m_T1);
 	d->m_interface.setT2(d->m_T2);
-	
-	QList<double> xx=to_double_list(d->m_isochromats.value("x").toList());
-	QList<double> yy=to_double_list(d->m_isochromats.value("y").toList());
-	QList<double> zz=to_double_list(d->m_isochromats.value("z").toList());
-	QList<double> ff=to_double_list(d->m_isochromats.value("f").toList());
-	QList<double> dd=to_double_list(d->m_isochromats.value("d").toList());
-	d->m_interface.setIsochromats(xx,yy,zz,ff,dd);
 	
 	QList<QVariant> rf_waveforms=d->m_simblocks["rf_waveforms"].toList();
 	QList<QVariant> blocks=d->m_simblocks["blocks"].toList();
@@ -89,7 +82,7 @@ void VmriSimulator::simulate() {
 		QString block_type=BB["block_type"].toString();
 		double duration=BB["duration"].toDouble();
 		if (block_type=="evolve") {
-		    printf("Evolve (%g ms)...",duration);
+		    printf("Evolve (%g ms)...",duration/1000);
 		    start=std::clock();
 			QList<double> gradient_moment=to_double_list(BB["gradient_moment"].toList());
 			d->do_evolve(gradient_moment,duration);
@@ -181,8 +174,8 @@ void VmriSimulatorPrivate::do_evolve(const QList<double> &moment,double duration
 	A[0]=moment.value(0)*factor;
 	A[1]=moment.value(1)*factor;
 	A[2]=moment.value(2)*factor;
-	double E1=exp(-duration/m_T1);
-	double E2=exp(-duration/m_T2);
+	double E1=exp(-duration/(m_T1*1000));
+	double E2=exp(-duration/(m_T2*1000));
 	m_interface.evolve(A,duration,E1,E2);
 }
 
